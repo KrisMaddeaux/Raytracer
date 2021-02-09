@@ -37,14 +37,14 @@ public:
 		if (discriminant > 0)
 		{
 			float t = (-b - sqrtf(b * b - a * c)) / a;
-			if (t < INT_MAX && t > 0.0f)
+			if (t < INT_MAX && t > 0.001f)
 			{
 				rIntersectPoint = r.GetPointAtParameter(t);
 				hasHitSphere = true;
 			}
 
 			t = (-b + sqrtf(b * b - a * c)) / a;
-			if (t < INT_MAX && t > 0.0f)
+			if (t < INT_MAX && t > 0.001f)
 			{
 				rIntersectPoint = r.GetPointAtParameter(t);
 				hasHitSphere = true;
@@ -55,7 +55,7 @@ public:
 		Vec3f centerPos = m_position - r.GetOrigin();
 		Vec3f rayDir = r.GetDirection().normalize();
 		float proj = rayDir.dot(centerPos);
-		if (proj >= 0.0f)
+		if (proj >= 0.001f)
 		{
 			Vec3f projPos = rayDir * proj;
 			float distanceToSphere = (projPos - centerPos).magnitude();

@@ -8,6 +8,7 @@
 
 std::vector<HitObject*> g_hitObjectsList;
 
+// Returns a random number between 0 - 1
 const float GetRandomNum()
 {
 	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -31,13 +32,24 @@ bool HasHit(Ray r, HitRecord& rHitRecord)
 	return hasHit;
 }
 
+Vec3f GetRandomUnitVecInSphere()
+{
+	Vec3f p;
+	do 
+	{
+		p = Vec3f(GetRandomNum(), GetRandomNum(), GetRandomNum()) * 2.0f - Vec3f(1, 1, 1);
+	} while (p.x * p.x + p.y * p.y + p.z * p.z >= 1.0f);
+	return p;
+}
+
 Vec3f GetRaytracedColor(Ray r)
 {
 	HitRecord hitRecord;
 	if (HasHit(r, hitRecord))
 	{
 		Vec3f normal = (hitRecord.m_rayIntersectPoint - hitRecord.m_hitObjectPosition).normalize();
-		return Vec3f(normal.x + 1.0f, normal.y + 1.0f, normal.z + 1.0f) * 0.5f;
+		Vec3f target = hitRecord.m_rayIntersectPoint + normal + GetRandomUnitVecInSphere();
+		return GetRaytracedColor(Ray(hitRecord.m_rayIntersectPoint, target - hitRecord.m_rayIntersectPoint)) * 0.5f;
 	}
 
 	Vec3f dir = r.GetDirection().normalize();
@@ -81,6 +93,7 @@ int main()
 			col.r /= static_cast<float>(antialisingSamples);
 			col.g /= static_cast<float>(antialisingSamples);
 			col.b /= static_cast<float>(antialisingSamples);
+			col = Vec3f(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b));
 
 			int ir = static_cast<int>(255.99 * col.r);
 			int ig = static_cast<int>(255.99 * col.g);
