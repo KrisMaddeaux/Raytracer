@@ -46,10 +46,10 @@ int main()
 	myfile.open("RaytracedOutput.ppm");
 	myfile.clear();
 
-	int nx = 200;
-	int ny = 100;
-	int ns = 100;
-	myfile << "P3\n" << nx << " " << ny << "\n255\n";
+	const int outputImageWidth = 200;
+	const int outputImageHeight = 100;
+	const int antialisingSamples = 100;
+	myfile << "P3\n" << outputImageWidth << " " << outputImageHeight << "\n255\n";
 
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5f));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100.0f));
@@ -57,24 +57,24 @@ int main()
 	Camera camera;
 	srand(time(0));
 
-	for (int i = ny; 0 <= i; i--)
+	for (int i = outputImageHeight; 0 <= i; i--)
 	{
-		for (int j = 0; j < nx; j++)
+		for (int j = 0; j < outputImageWidth; j++)
 		{
 			Vec3f col(0.0f, 0.0f, 0.0f);
-			for (int k = 0; k < ns; k++)
+			for (int k = 0; k < antialisingSamples; k++)
 			{
 				float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-				float u = static_cast<float>(j + random) / static_cast<float>(nx);
-				float v = static_cast<float>(i + random) / static_cast<float>(ny);
+				float u = static_cast<float>(j + random) / static_cast<float>(outputImageWidth + random);
+				float v = static_cast<float>(i + random) / static_cast<float>(outputImageHeight + random);
 
 				Ray r = camera.CastRay(u, v);
 				col += GetRaytracedColor(r);
 			}
 
-			col.r /= static_cast<float>(ns);
-			col.g /= static_cast<float>(ns);
-			col.b /= static_cast<float>(ns);
+			col.r /= static_cast<float>(antialisingSamples);
+			col.g /= static_cast<float>(antialisingSamples);
+			col.b /= static_cast<float>(antialisingSamples);
 
 			int ir = static_cast<int>(255.99 * col.r);
 			int ig = static_cast<int>(255.99 * col.g);
