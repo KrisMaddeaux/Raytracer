@@ -142,6 +142,7 @@
     <ClCompile Include="MathClass.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="HitObjects.h" />
     <ClInclude Include="MathClass.h" />
     <ClInclude Include="Ray.h" />

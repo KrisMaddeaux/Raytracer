@@ -2,6 +2,12 @@
 
 #include "Ray.h"
 
+struct HitRecord
+{
+	Vec3f m_hitObjectPosition;
+	Vec3f m_rayIntersectPoint;
+};
+
 // An object that can be hit by a ray
 class HitObject
 {

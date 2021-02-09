@@ -1,20 +1,38 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <time.h>
+
 #include "HitObjects.h"
+#include "Camera.h"
 
 std::vector<HitObject*> g_hitObjectsList;
 
-Vec3f GetRaytracedColor(Ray r)
+bool HasHit(Ray r, HitRecord& rHitRecord)
 {
-	for (HitObject * pHitObject : g_hitObjectsList)
+	bool hasHit = false;
+	float closestHitDistance = INT_MAX;
+	for (HitObject* pHitObject : g_hitObjectsList)
 	{
 		Vec3f intersectPoint;
-		if(pHitObject->HasHit(r, intersectPoint))
+		if (pHitObject->HasHit(r, intersectPoint) && intersectPoint.magnitude() < closestHitDistance)
 		{
-			Vec3f normal = (intersectPoint - pHitObject->m_position).normalize();
-			return Vec3f(normal.x + 1.0f, normal.y + 1.0f, normal.z + 1.0f) * 0.5f;
+			rHitRecord.m_hitObjectPosition = pHitObject->m_position;
+			rHitRecord.m_rayIntersectPoint = intersectPoint;
+			closestHitDistance = intersectPoint.magnitude();
+			hasHit = true;
 		}
+	}
+	return hasHit;
+}
+
+Vec3f GetRaytracedColor(Ray r)
+{
+	HitRecord hitRecord;
+	if (HasHit(r, hitRecord))
+	{
+		Vec3f normal = (hitRecord.m_rayIntersectPoint - hitRecord.m_hitObjectPosition).normalize();
+		return Vec3f(normal.x + 1.0f, normal.y + 1.0f, normal.z + 1.0f) * 0.5f;
 	}
 
 	Vec3f dir = r.GetDirection().normalize();
@@ -30,27 +48,37 @@ int main()
 
 	int nx = 200;
 	int ny = 100;
+	int ns = 100;
 	myfile << "P3\n" << nx << " " << ny << "\n255\n";
-
-	Vec3f lowerLeftCorner(-2.0f, -1.0f, -1.0f);
-	Vec3f horizontal(4.0f, 0.0f, 0.0f);
-	Vec3f vertical(0.0f, 2.0f, 0.0f);
-	Vec3f origin(0.0f, 0.0f, 0.0f);
 
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5f));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100.0f));
+
+	Camera camera;
+	srand(time(0));
 
 	for (int i = ny; 0 <= i; i--)
 	{
 		for (int j = 0; j < nx; j++)
 		{
-			float u = float(j) / float(nx);
-			float v = float(i) / float(ny);
-			Ray r(origin, (lowerLeftCorner + horizontal * u + vertical * v ) - origin);
-			Vec3f col = GetRaytracedColor(r);
-			int ir = int(255.99 * col.r);
-			int ig = int(255.99 * col.g);
-			int ib = int(255.99 * col.b);
+			Vec3f col(0.0f, 0.0f, 0.0f);
+			for (int k = 0; k < ns; k++)
+			{
+				float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+				float u = static_cast<float>(j + random) / static_cast<float>(nx);
+				float v = static_cast<float>(i + random) / static_cast<float>(ny);
+
+				Ray r = camera.CastRay(u, v);
+				col += GetRaytracedColor(r);
+			}
+
+			col.r /= static_cast<float>(ns);
+			col.g /= static_cast<float>(ns);
+			col.b /= static_cast<float>(ns);
+
+			int ir = static_cast<int>(255.99 * col.r);
+			int ig = static_cast<int>(255.99 * col.g);
+			int ib = static_cast<int>(255.99 * col.b);
 			myfile << ir << " " << ig << " " << ib << "\n";
 		}
 	}
