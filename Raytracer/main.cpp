@@ -8,6 +8,11 @@
 
 std::vector<HitObject*> g_hitObjectsList;
 
+const float GetRandomNum()
+{
+	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+}
+
 bool HasHit(Ray r, HitRecord& rHitRecord)
 {
 	bool hasHit = false;
@@ -64,9 +69,10 @@ int main()
 			Vec3f col(0.0f, 0.0f, 0.0f);
 			for (int k = 0; k < antialisingSamples; k++)
 			{
-				float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-				float u = static_cast<float>(j + random) / static_cast<float>(outputImageWidth + random);
-				float v = static_cast<float>(i + random) / static_cast<float>(outputImageHeight + random);
+				const float randomU = GetRandomNum();
+				const float randomV = GetRandomNum();
+				float u = static_cast<float>(j + randomU) / static_cast<float>(outputImageWidth + randomU);
+				float v = static_cast<float>(i + randomV) / static_cast<float>(outputImageHeight + randomV);
 
 				Ray r = camera.CastRay(u, v);
 				col += GetRaytracedColor(r);
