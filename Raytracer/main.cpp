@@ -17,15 +17,15 @@ const float GetRandomNum()
 bool HasHit(Ray r, HitRecord& rHitRecord)
 {
 	bool hasHit = false;
-	float closestHitDistance = INT_MAX;
+	float currentClosestHitDistance = INT_MAX;
 	for (HitObject* pHitObject : g_hitObjectsList)
 	{
 		Vec3f intersectPoint;
-		if (pHitObject->HasHit(r, intersectPoint) && intersectPoint.magnitude() < closestHitDistance)
+		if (pHitObject->HasHit(r, currentClosestHitDistance, intersectPoint) /*&& intersectPoint.magnitude() < closestHitDistance*/)
 		{
 			rHitRecord.m_hitObjectPosition = pHitObject->m_position;
 			rHitRecord.m_rayIntersectPoint = intersectPoint;
-			closestHitDistance = intersectPoint.magnitude();
+			//currentClosestHitDistance = intersectPoint.magnitude();
 			hasHit = true;
 		}
 	}
