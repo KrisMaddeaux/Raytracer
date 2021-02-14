@@ -496,3 +496,18 @@ static Vec3f Reflect(Vec3f v, Vec3f n)
 	return v - (n * v.dot(n) * 2);
 }
 
+static Vec3f ACESFilmToneMapper(Vec3f col)
+{
+	float A = 2.51f;
+	float B = 0.03f;
+	float C = 2.43f;
+	float D = 0.59f;
+	float E = 0.14f;
+
+	float r = (col.r * (A * col.r + B)) / (col.r * (C * col.r + D) + E);
+	float g = (col.g * (A * col.g + B)) / (col.g * (C * col.g + D) + E);
+	float b = (col.b * (A * col.b + B)) / (col.b * (C * col.b + D) + E);
+
+	return Vec3f(r, g, b);
+}
+

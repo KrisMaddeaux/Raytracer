@@ -7,6 +7,7 @@
 #include "Camera.h"
 
 std::vector<HitObject*> g_hitObjectsList;
+std::vector<HitObject*> g_lightObjectsList;
 
 bool HasHit(Ray r, float minHitDistance, float maxHitDistance, HitRecord& rHitRecord)
 {
@@ -28,10 +29,21 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 	if (HasHit(r, 0.001f, INT_MAX, hitRecord))
 	{
 		Ray scattered;
-		Vec3f attenuation;
-		if (depth < 50 && hitRecord.m_pMaterial->Scatter(r, hitRecord, attenuation, scattered))
+		if (depth < 50 && hitRecord.m_pMaterial->Scatter(r, hitRecord, scattered))
 		{
-			return attenuation * GetRaytracedColor(scattered, depth + 1);
+			Vec3f lightColour = Vec3f(0.0f, 0.0f, 0.0f);
+			for (HitObject* pLightObject : g_lightObjectsList)
+			{
+				float distanceToLight = (hitRecord.m_intersectPoint - pLightObject->m_position).magnitude();
+				if (distanceToLight <= static_cast<LightSphere*>(pLightObject)->m_lightRadius)
+				{
+					//float lightAttenuation = 1.0f / (0.5f + distanceToLight * distanceToLight);
+					//light += pLightObject->m_pMaterial->m_albedo * lightAttenuation;
+					lightColour += LERP(pLightObject->m_pMaterial->m_diffuseColour, Vec3f(0.0f, 0.0f, 0.0f), distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
+				}
+			}
+
+			return lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1);
 		}
 		else
 		{
@@ -55,10 +67,13 @@ int main()
 	const int antialisingSamples = 100;
 	myfile << "P3\n" << outputImageWidth << " " << outputImageHeight << "\n255\n";
 
-	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5f, new LambertianDiffuse(Vec3f(0.8f, 0.3f, 0.3f))));
+	LightSphere* pLightObject = new LightSphere(Vec3f(0.0f, 0.0f, -1.0f), 0.25f, 1.0f, new Emmisive(Vec3f(0.349f, 0.949f, 0.349f)));
+	g_hitObjectsList.push_back(pLightObject);
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100.0f, new LambertianDiffuse(Vec3f(0.8f, 0.8f, 0.0f))));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5f, new Metal(Vec3f(0.8f, 0.6f, 0.2f), 0.3f)));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5f, new Metal(Vec3f(0.8f, 0.8f, 0.8f), 1.0f)));
+
+	g_lightObjectsList.push_back(pLightObject);
 
 	Camera camera;
 	srand(time(0));
@@ -82,8 +97,9 @@ int main()
 			col.r /= static_cast<float>(antialisingSamples);
 			col.g /= static_cast<float>(antialisingSamples);
 			col.b /= static_cast<float>(antialisingSamples);
-			col = Vec3f(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b));
+			//col = Vec3f(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b));
 
+			col = ACESFilmToneMapper(col);
 			int ir = static_cast<int>(255.99 * col.r);
 			int ig = static_cast<int>(255.99 * col.g);
 			int ib = static_cast<int>(255.99 * col.b);

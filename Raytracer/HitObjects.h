@@ -3,6 +3,7 @@
 #include "Ray.h"
 
 class Material;
+class HitObject;
 
 struct HitRecord
 {
@@ -10,6 +11,7 @@ struct HitRecord
 	Vec3f m_intersectPoint;
 	Vec3f m_normal;
 	Material* m_pMaterial;
+	HitObject* m_pHitObject;
 };
 
 // An object that can be hit by a ray
@@ -55,6 +57,7 @@ public:
 				rHitRecord.m_objectPosition = m_position;
 				rHitRecord.m_normal = (rHitRecord.m_intersectPoint - rHitRecord.m_objectPosition).normalize();
 				rHitRecord.m_pMaterial = m_pMaterial;
+				rHitRecord.m_pHitObject = this;
 				hasHitSphere = true;
 			}
 
@@ -66,6 +69,7 @@ public:
 				rHitRecord.m_objectPosition = m_position;
 				rHitRecord.m_normal = (rHitRecord.m_intersectPoint - rHitRecord.m_objectPosition).normalize();
 				rHitRecord.m_pMaterial = m_pMaterial;
+				rHitRecord.m_pHitObject = this;
 				hasHitSphere = true;
 			}
 		}
@@ -98,7 +102,71 @@ public:
 		return hasHitSphere;
 	}
 
-private:
 	float m_radius;
+};
+
+class LightSphere : public Sphere
+{
+public:
+	LightSphere(Vec3f center, float radius, float lightRadius, Material* material)
+		:Sphere(center, radius, material)
+		,m_isLightHit(false)
+	{
+		m_lightRadius = (lightRadius > radius) ? lightRadius : radius;
+	}
+
+	virtual bool HasHit(Ray r, float minHitDistance, float& rMaxHitDistance, HitRecord& rHitRecord)
+	{
+		bool hasHitSphere = false;
+
+		if (!Sphere::HasHit(r, minHitDistance, rMaxHitDistance, rHitRecord))
+		{
+			// For debugging lights
+			/*
+			Vec3f oc = r.GetOrigin() - m_position;
+			float a = r.GetDirection().dot(r.GetDirection());
+			float b = oc.dot(r.GetDirection());
+			float c = oc.dot(oc) - m_lightRadius * m_lightRadius;
+			float discriminant = b * b - a * c;
+			if (discriminant > 0)
+			{
+				float t = (-b - sqrtf(b * b - a * c)) / a;
+				if (t < rMaxHitDistance && t > minHitDistance)
+				{
+					rMaxHitDistance = t;
+					rHitRecord.m_intersectPoint = r.GetPointAtParameter(t);
+					rHitRecord.m_objectPosition = m_position;
+					rHitRecord.m_normal = (rHitRecord.m_intersectPoint - rHitRecord.m_objectPosition).normalize();
+					rHitRecord.m_pMaterial = m_pMaterial;
+					rHitRecord.m_pHitObject = this;
+					hasHitSphere = true;
+					m_isLightHit = true;
+				}
+
+				t = (-b + sqrtf(b * b - a * c)) / a;
+				if (t < rMaxHitDistance && t > minHitDistance)
+				{
+					rMaxHitDistance = t;
+					rHitRecord.m_intersectPoint = r.GetPointAtParameter(t);
+					rHitRecord.m_objectPosition = m_position;
+					rHitRecord.m_normal = (rHitRecord.m_intersectPoint - rHitRecord.m_objectPosition).normalize();
+					rHitRecord.m_pMaterial = m_pMaterial;
+					rHitRecord.m_pHitObject = this;
+					hasHitSphere = true;
+					m_isLightHit = true;
+				}
+			}
+			*/
+		}
+		else
+		{
+			hasHitSphere = true;
+		}
+
+		return hasHitSphere;
+	}
+
+	float m_lightRadius;
+	bool m_isLightHit;
 };
 
