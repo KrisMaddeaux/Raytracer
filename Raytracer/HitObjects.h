@@ -4,15 +4,15 @@
 
 struct HitRecord
 {
-	Vec3f m_hitObjectPosition;
-	Vec3f m_rayIntersectPoint;
+	Vec3f m_objectPosition;
+	Vec3f m_intersectPoint;
 };
 
 // An object that can be hit by a ray
 class HitObject
 {
 public:
-	virtual bool HasHit(Ray r, float& rCurrentClosestHit, Vec3f& rIntersectPoint) = 0;
+	virtual bool HasHit(Ray r, float minHitDistance, float& rMaxHitDistance, HitRecord& rHitRecord) = 0;
 	Vec3f m_position;
 };
 
@@ -25,7 +25,7 @@ public:
 		m_radius = radius;
 	}
 
-	virtual bool HasHit(Ray r, float& rCurrentClosestHit, Vec3f& rIntersectPoint)
+	virtual bool HasHit(Ray r, float minHitDistance, float& rMaxHitDistance, HitRecord& rHitRecord)
 	{
 		bool hasHitSphere = false;
 
@@ -37,18 +37,20 @@ public:
 		if (discriminant > 0)
 		{
 			float t = (-b - sqrtf(b * b - a * c)) / a;
-			if (t < rCurrentClosestHit && t > 0.001f)
+			if (t < rMaxHitDistance && t > minHitDistance)
 			{
-				rCurrentClosestHit = t;
-				rIntersectPoint = r.GetPointAtParameter(t);
+				rMaxHitDistance = t;
+				rHitRecord.m_intersectPoint = r.GetPointAtParameter(t);
+				rHitRecord.m_objectPosition = m_position;
 				hasHitSphere = true;
 			}
 
 			t = (-b + sqrtf(b * b - a * c)) / a;
-			if (t < rCurrentClosestHit && t > 0.001f)
+			if (t < rMaxHitDistance && t > minHitDistance)
 			{
-				rCurrentClosestHit = t;
-				rIntersectPoint = r.GetPointAtParameter(t);
+				rMaxHitDistance = t;
+				rHitRecord.m_intersectPoint = r.GetPointAtParameter(t);
+				rHitRecord.m_objectPosition = m_position;
 				hasHitSphere = true;
 			}
 		}

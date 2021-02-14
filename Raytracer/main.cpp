@@ -14,18 +14,14 @@ const float GetRandomNum()
 	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 }
 
-bool HasHit(Ray r, HitRecord& rHitRecord)
+bool HasHit(Ray r, float minHitDistance, float maxHitDistance, HitRecord& rHitRecord)
 {
 	bool hasHit = false;
-	float currentClosestHitDistance = INT_MAX;
+	float closestHitDistance = maxHitDistance;
 	for (HitObject* pHitObject : g_hitObjectsList)
 	{
-		Vec3f intersectPoint;
-		if (pHitObject->HasHit(r, currentClosestHitDistance, intersectPoint) /*&& intersectPoint.magnitude() < closestHitDistance*/)
+		if (pHitObject->HasHit(r, minHitDistance, closestHitDistance, rHitRecord))
 		{
-			rHitRecord.m_hitObjectPosition = pHitObject->m_position;
-			rHitRecord.m_rayIntersectPoint = intersectPoint;
-			//currentClosestHitDistance = intersectPoint.magnitude();
 			hasHit = true;
 		}
 	}
@@ -45,11 +41,11 @@ Vec3f GetRandomUnitVecInSphere()
 Vec3f GetRaytracedColor(Ray r)
 {
 	HitRecord hitRecord;
-	if (HasHit(r, hitRecord))
+	if (HasHit(r, 0.001f, INT_MAX, hitRecord))
 	{
-		Vec3f normal = (hitRecord.m_rayIntersectPoint - hitRecord.m_hitObjectPosition).normalize();
-		Vec3f target = hitRecord.m_rayIntersectPoint + normal + GetRandomUnitVecInSphere();
-		return GetRaytracedColor(Ray(hitRecord.m_rayIntersectPoint, target - hitRecord.m_rayIntersectPoint)) * 0.5f;
+		Vec3f normal = (hitRecord.m_intersectPoint - hitRecord.m_objectPosition).normalize();
+		Vec3f target = hitRecord.m_intersectPoint + normal + GetRandomUnitVecInSphere();
+		return GetRaytracedColor(Ray(hitRecord.m_intersectPoint, target - hitRecord.m_intersectPoint)) * 0.5f;
 	}
 
 	Vec3f dir = r.GetDirection().normalize();
