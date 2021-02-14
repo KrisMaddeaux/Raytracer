@@ -75,7 +75,7 @@ int main()
 
 	g_lightObjectsList.push_back(pLightObject);
 
-	Camera camera;
+	Camera camera(Vec3f(-2.0f, 2.0f, 1.0f), Vec3f(0.0f, 0.0f, -1.0f), Vec3f(0.0f, 1.0f, 0.0f), 20.0f, static_cast<float>(outputImageWidth) / static_cast<float>(outputImageHeight));
 	srand(time(0));
 
 	for (int i = outputImageHeight; 0 <= i; i--)
