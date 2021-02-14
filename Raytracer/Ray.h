@@ -5,6 +5,8 @@
 class Ray
 {
 public:
+	Ray() {}
+
 	Ray(Vec3f origin, Vec3f direction)
 	{
 		m_origin = origin;

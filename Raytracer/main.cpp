@@ -3,16 +3,10 @@
 #include <vector>
 #include <time.h>
 
-#include "HitObjects.h"
+#include "Materials.h"
 #include "Camera.h"
 
 std::vector<HitObject*> g_hitObjectsList;
-
-// Returns a random number between 0 - 1
-const float GetRandomNum()
-{
-	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-}
 
 bool HasHit(Ray r, float minHitDistance, float maxHitDistance, HitRecord& rHitRecord)
 {
@@ -28,24 +22,21 @@ bool HasHit(Ray r, float minHitDistance, float maxHitDistance, HitRecord& rHitRe
 	return hasHit;
 }
 
-Vec3f GetRandomUnitVecInSphere()
-{
-	Vec3f p;
-	do 
-	{
-		p = Vec3f(GetRandomNum(), GetRandomNum(), GetRandomNum()) * 2.0f - Vec3f(1, 1, 1);
-	} while (p.x * p.x + p.y * p.y + p.z * p.z >= 1.0f);
-	return p;
-}
-
-Vec3f GetRaytracedColor(Ray r)
+Vec3f GetRaytracedColor(Ray r, int depth)
 {
 	HitRecord hitRecord;
 	if (HasHit(r, 0.001f, INT_MAX, hitRecord))
 	{
-		Vec3f normal = (hitRecord.m_intersectPoint - hitRecord.m_objectPosition).normalize();
-		Vec3f target = hitRecord.m_intersectPoint + normal + GetRandomUnitVecInSphere();
-		return GetRaytracedColor(Ray(hitRecord.m_intersectPoint, target - hitRecord.m_intersectPoint)) * 0.5f;
+		Ray scattered;
+		Vec3f attenuation;
+		if (depth < 50 && hitRecord.m_pMaterial->Scatter(r, hitRecord, attenuation, scattered))
+		{
+			return attenuation * GetRaytracedColor(scattered, depth + 1);
+		}
+		else
+		{
+			return Vec3f(0.0f, 0.0f, 0.0f);
+		}
 	}
 
 	Vec3f dir = r.GetDirection().normalize();
@@ -64,8 +55,10 @@ int main()
 	const int antialisingSamples = 100;
 	myfile << "P3\n" << outputImageWidth << " " << outputImageHeight << "\n255\n";
 
-	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5f));
-	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100.0f));
+	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, 0.0f, -1.0f), 0.5f, new LambertianDiffuse(Vec3f(0.8f, 0.3f, 0.3f))));
+	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100.0f, new LambertianDiffuse(Vec3f(0.8f, 0.8f, 0.0f))));
+	g_hitObjectsList.push_back(new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5f, new Metal(Vec3f(0.8f, 0.6f, 0.2f), 0.3f)));
+	g_hitObjectsList.push_back(new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5f, new Metal(Vec3f(0.8f, 0.8f, 0.8f), 1.0f)));
 
 	Camera camera;
 	srand(time(0));
@@ -83,7 +76,7 @@ int main()
 				float v = static_cast<float>(i + randomV) / static_cast<float>(outputImageHeight + randomV);
 
 				Ray r = camera.CastRay(u, v);
-				col += GetRaytracedColor(r);
+				col += GetRaytracedColor(r, 0);
 			}
 
 			col.r /= static_cast<float>(antialisingSamples);

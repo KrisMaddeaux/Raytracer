@@ -6,7 +6,6 @@ const float PI = 3.141592654f;
 const float DegreesToRadians = PI / 180.0f;
 const float RadiansToDegrees = 180.0f / PI;
 
-
 //3D vectors
 class Vec3f
 {
@@ -472,5 +471,28 @@ inline lerpClass LERP(lerpClass v0, lerpClass v1, float t)
 	}*/
 
 	return (v0*(1.0f-t)) + (v1*t);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Returns a random number between 0 - 1
+static const float GetRandomNum()
+{
+	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+}
+
+static Vec3f GetRandomUnitVecInSphere()
+{
+	Vec3f p;
+	do
+	{
+		p = Vec3f(GetRandomNum(), GetRandomNum(), GetRandomNum()) * 2.0f - Vec3f(1, 1, 1);
+	} while (p.x * p.x + p.y * p.y + p.z * p.z >= 1.0f);
+	return p;
+}
+
+static Vec3f Reflect(Vec3f v, Vec3f n)
+{
+	return v - (n * v.dot(n) * 2);
 }
 

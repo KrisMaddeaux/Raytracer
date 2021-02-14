@@ -2,27 +2,38 @@
 
 #include "Ray.h"
 
+class Material;
+
 struct HitRecord
 {
 	Vec3f m_objectPosition;
 	Vec3f m_intersectPoint;
+	Vec3f m_normal;
+	Material* m_pMaterial;
 };
 
 // An object that can be hit by a ray
 class HitObject
 {
 public:
+	~HitObject()
+	{
+		delete m_pMaterial;
+	}
+
 	virtual bool HasHit(Ray r, float minHitDistance, float& rMaxHitDistance, HitRecord& rHitRecord) = 0;
 	Vec3f m_position;
+	Material* m_pMaterial;
 };
 
 class Sphere : public HitObject
 {
 public:
-	Sphere(Vec3f center, float radius)
+	Sphere(Vec3f center, float radius, Material* material)
 	{
 		m_position = center;
 		m_radius = radius;
+		m_pMaterial = material;
 	}
 
 	virtual bool HasHit(Ray r, float minHitDistance, float& rMaxHitDistance, HitRecord& rHitRecord)
@@ -42,6 +53,8 @@ public:
 				rMaxHitDistance = t;
 				rHitRecord.m_intersectPoint = r.GetPointAtParameter(t);
 				rHitRecord.m_objectPosition = m_position;
+				rHitRecord.m_normal = (rHitRecord.m_intersectPoint - rHitRecord.m_objectPosition).normalize();
+				rHitRecord.m_pMaterial = m_pMaterial;
 				hasHitSphere = true;
 			}
 
@@ -51,6 +64,8 @@ public:
 				rMaxHitDistance = t;
 				rHitRecord.m_intersectPoint = r.GetPointAtParameter(t);
 				rHitRecord.m_objectPosition = m_position;
+				rHitRecord.m_normal = (rHitRecord.m_intersectPoint - rHitRecord.m_objectPosition).normalize();
+				rHitRecord.m_pMaterial = m_pMaterial;
 				hasHitSphere = true;
 			}
 		}
