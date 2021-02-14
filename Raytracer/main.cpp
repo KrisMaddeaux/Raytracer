@@ -75,7 +75,12 @@ int main()
 
 	g_lightObjectsList.push_back(pLightObject);
 
-	Camera camera(Vec3f(-2.0f, 2.0f, 1.0f), Vec3f(0.0f, 0.0f, -1.0f), Vec3f(0.0f, 1.0f, 0.0f), 20.0f, static_cast<float>(outputImageWidth) / static_cast<float>(outputImageHeight));
+	Vec3f lookfrom(3.0f, 3.0f, 2.0f);
+	Vec3f lookat(0.0f, 0.0f, -1.0f);
+	float distanceToFocus = (lookfrom - lookat).magnitude();
+	float aperture = 2.0f;
+	Camera camera(lookfrom, lookat, Vec3f(0.0f, 1.0f, 0.0f), 20.0f, static_cast<float>(outputImageWidth) / static_cast<float>(outputImageHeight), aperture, distanceToFocus);
+
 	srand(time(0));
 
 	for (int i = outputImageHeight; 0 <= i; i--)
