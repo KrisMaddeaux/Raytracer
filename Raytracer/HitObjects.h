@@ -56,7 +56,8 @@ public:
 		}
 
 		
-		/*Vec3f centerPos = m_position - r.GetOrigin();
+		/*
+		Vec3f centerPos = m_position - r.GetOrigin();
 		Vec3f rayDir = r.GetDirection().normalize();
 		float proj = rayDir.dot(centerPos);
 		if (proj > 0.0f)
@@ -66,17 +67,18 @@ public:
 			if (distanceToSphere <= m_radius)
 			{
 				float offset = m_radius - distanceToSphere;
-				rIntersectPoint = projPos - (rayDir * offset);
-
-				float kris = (rIntersectPoint - r.GetOrigin()).magnitude();
-				if (kris < rCurrentClosestHit)
+				Vec3f intersectPoint = projPos - (rayDir * offset);
+				float intersectDistance = (intersectPoint - r.GetOrigin()).magnitude();
+				if (intersectDistance < rMaxHitDistance && intersectDistance > minHitDistance)
 				{
-					rCurrentClosestHit = kris;
+					rMaxHitDistance = intersectDistance;
+					rHitRecord.m_intersectPoint = intersectPoint;
+					rHitRecord.m_objectPosition = m_position;
 					hasHitSphere = true;
 				}
 			}
-		}*/
-
+		}
+		*/
 
 		return hasHitSphere;
 	}
