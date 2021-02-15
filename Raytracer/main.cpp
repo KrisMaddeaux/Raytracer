@@ -56,6 +56,34 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 	return LERP(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(0.5f, 0.7f, 1.0f), t);
 }
 
+void MakeScene()
+{
+	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -1000.0f, 0.0f), 1000.0f, new LambertianDiffuse(Vec3f(0.5f, 0.5f, 0.5f))));
+	for (int a = -11; a < 11; a++)
+	{
+		for (int b = -11; b < 11; b++)
+		{
+			float chooseMaterial = GetRandomNum();
+			Vec3f center(a + 0.9f * GetRandomNum(), 0.2f, b + 0.9f * GetRandomNum());
+			if (chooseMaterial <= 0.5f)
+			{
+				g_hitObjectsList.push_back(new Sphere(center, 0.2f, new LambertianDiffuse(Vec3f(GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum()))));
+			}
+			else
+			{
+				g_hitObjectsList.push_back(new Sphere(center, 0.2f, new Metal(Vec3f(0.5f * (1.0f + GetRandomNum()), 0.5f * (1.0f + GetRandomNum()), 0.5f * (1.0f + GetRandomNum())), 0.5f * GetRandomNum())));
+			}
+		}
+	}
+
+	LightSphere* pLightObject = new LightSphere(Vec3f(0.0f, 1.0f, 0.0f), 0.5f, 2.5f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
+	g_hitObjectsList.push_back(pLightObject);
+	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
+	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
+
+	g_lightObjectsList.push_back(pLightObject);
+}
+
 int main()
 {
 	std::ofstream myfile;
@@ -67,18 +95,12 @@ int main()
 	const int antialisingSamples = 100;
 	myfile << "P3\n" << outputImageWidth << " " << outputImageHeight << "\n255\n";
 
-	LightSphere* pLightObject = new LightSphere(Vec3f(0.0f, 0.0f, -1.0f), 0.25f, 1.0f, new Emmisive(Vec3f(0.349f, 0.949f, 0.349f)));
-	g_hitObjectsList.push_back(pLightObject);
-	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -100.5f, -1.0f), 100.0f, new LambertianDiffuse(Vec3f(0.8f, 0.8f, 0.0f))));
-	g_hitObjectsList.push_back(new Sphere(Vec3f(1.0f, 0.0f, -1.0f), 0.5f, new Metal(Vec3f(0.8f, 0.6f, 0.2f), 0.3f)));
-	g_hitObjectsList.push_back(new Sphere(Vec3f(-1.0f, 0.0f, -1.0f), 0.5f, new Metal(Vec3f(0.8f, 0.8f, 0.8f), 1.0f)));
+	MakeScene();
 
-	g_lightObjectsList.push_back(pLightObject);
-
-	Vec3f lookfrom(3.0f, 3.0f, 2.0f);
-	Vec3f lookat(0.0f, 0.0f, -1.0f);
-	float distanceToFocus = (lookfrom - lookat).magnitude();
-	float aperture = 2.0f;
+	Vec3f lookfrom(13.0f, 2.0f, 3.0f);
+	Vec3f lookat(0.0f, 0.0f, 0.0f);
+	float distanceToFocus = 10.0f;
+	float aperture = 0.1f;
 	Camera camera(lookfrom, lookat, Vec3f(0.0f, 1.0f, 0.0f), 20.0f, static_cast<float>(outputImageWidth) / static_cast<float>(outputImageHeight), aperture, distanceToFocus);
 
 	srand(time(0));
