@@ -2,11 +2,20 @@
 
 #include "HitObjects.h"
 
+enum MaterialType
+{
+	enLambertianDiffuse,
+	enMetal,
+	enEmmisive
+};
+
 class Material
 {
 public:
 	virtual bool Scatter(Ray inRay, HitRecord hitRecord, Ray& rScatteredRay) = 0;
 	Vec3f m_diffuseColour;
+	MaterialType m_materialType;
+	float m_shininess; // Used in specular light calculation. The bigger the number, the more pronounces the highlight will be
 };
 
 class LambertianDiffuse : public Material
@@ -15,6 +24,8 @@ public:
 	LambertianDiffuse(Vec3f diffuse)
 	{
 		m_diffuseColour = diffuse;
+		m_materialType = enLambertianDiffuse;
+		m_shininess = 1.0f;
 	}
 
 	virtual bool Scatter(Ray inRay, HitRecord hitRecord, Ray& rScatteredRay)
@@ -32,6 +43,8 @@ public:
 		:m_fuzzyness(fuzzyness)
 	{
 		m_diffuseColour = diffuse;
+		m_materialType = enMetal;
+		m_shininess = 5.0f;
 	}
 
 	virtual bool Scatter(Ray inRay, HitRecord hitRecord, Ray& rScatteredRay)
@@ -51,6 +64,8 @@ public:
 	Emmisive(Vec3f diffuse)
 	{
 		m_diffuseColour = diffuse;
+		m_materialType = enEmmisive;
+		m_shininess = 0.0f;
 	}
 
 	virtual bool Scatter(Ray inRay, HitRecord hitRecord, Ray& rScatteredRay)

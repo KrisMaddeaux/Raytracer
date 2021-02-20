@@ -15,7 +15,9 @@ static Vec3f RandomInUnitDisk()
 class Camera
 {
 public:
-	Camera(Vec3f lookfrom, Vec3f lookat, Vec3f vup, float vfov, float aspect, float aperture, float focusDistance) // vfov is top to bottom in degrees
+	Camera() {}
+
+	void Setup(Vec3f lookfrom, Vec3f lookat, Vec3f vup, float vfov, float aspect, float aperture, float focusDistance) // vfov is top to bottom in degrees
 	{
 		m_lensRadius = aperture / 2.0f;
 		float theta = vfov * PI / 180.0f;
@@ -38,6 +40,11 @@ public:
 		Vec3f rd =  RandomInUnitDisk() * m_lensRadius;
 		Vec3f offset = m_u * rd.x + m_v * rd.y;
 		return Ray(m_origin + offset, m_lowerLeftCorner + m_horizontal * u + m_vertical * v - m_origin - offset);
+	}
+
+	Vec3f GetPosition()
+	{
+		return m_origin;
 	}
 
 private:

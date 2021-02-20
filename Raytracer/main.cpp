@@ -8,6 +8,7 @@
 
 std::vector<HitObject*> g_hitObjectsList;
 std::vector<HitObject*> g_lightObjectsList;
+Camera g_camera;
 
 bool HasHit(Ray r, float minHitDistance, float maxHitDistance, HitRecord& rHitRecord)
 {
@@ -32,18 +33,46 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 		if (depth < 50 && hitRecord.m_pMaterial->Scatter(r, hitRecord, scattered))
 		{
 			Vec3f lightColour = Vec3f(0.0f, 0.0f, 0.0f);
-			for (HitObject* pLightObject : g_lightObjectsList)
+			if (hitRecord.m_pMaterial->m_materialType == MaterialType::enEmmisive)
 			{
-				float distanceToLight = (hitRecord.m_intersectPoint - pLightObject->m_position).magnitude();
-				if (distanceToLight <= static_cast<LightSphere*>(pLightObject)->m_lightRadius)
-				{
-					//float lightAttenuation = 1.0f / (0.5f + distanceToLight * distanceToLight);
-					//light += pLightObject->m_pMaterial->m_albedo * lightAttenuation;
-					lightColour += LERP(pLightObject->m_pMaterial->m_diffuseColour, Vec3f(0.0f, 0.0f, 0.0f), distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
-				}
+				lightColour = hitRecord.m_pMaterial->m_diffuseColour;
+				return lightColour + hitRecord.m_pMaterial->m_diffuseColour;
 			}
+			else
+			{
+				for (HitObject* pLightObject : g_lightObjectsList)
+				{
+					float distanceToLight = (hitRecord.m_intersectPoint - pLightObject->m_position).magnitude();
+					if (distanceToLight <= static_cast<LightSphere*>(pLightObject)->m_lightRadius)
+					{
+						Vec3f lightDir = (pLightObject->m_position - hitRecord.m_intersectPoint).normalize();
+						Vec3f attenuatedLightColour = LERP(pLightObject->m_pMaterial->m_diffuseColour, Vec3f(0.0f, 0.0f, 0.0f), distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
 
-			return lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1);
+						// Diffuse light
+						{
+							float diffuseLightIntensity = hitRecord.m_normal.dot(lightDir);
+							if (diffuseLightIntensity < 0.0f)
+							{
+								diffuseLightIntensity = 0.0f;
+							}
+							else if (diffuseLightIntensity > 1.0f)
+							{
+								diffuseLightIntensity = 1.0f;
+							}
+							lightColour += attenuatedLightColour * diffuseLightIntensity;
+						}
+
+						// Specular light
+						{
+							Vec3f v = (g_camera.GetPosition() - hitRecord.m_intersectPoint).normalize();
+							Vec3f h = (lightDir + v).normalize();
+							float specularLightIntensity = powf(hitRecord.m_normal.dot(h), hitRecord.m_pMaterial->m_shininess);
+							lightColour += attenuatedLightColour * specularLightIntensity;
+						}
+					}
+				}
+				return lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1);
+			}
 		}
 		else
 		{
@@ -76,7 +105,7 @@ void MakeScene()
 		}
 	}
 
-	LightSphere* pLightObject = new LightSphere(Vec3f(0.0f, 1.0f, 0.0f), 0.5f, 2.5f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
+	LightSphere* pLightObject = new LightSphere(Vec3f(0.0f, 1.0f, 0.0f), 0.5f, 5.0f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
 	g_hitObjectsList.push_back(pLightObject);
 	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
@@ -101,7 +130,7 @@ int main()
 	Vec3f lookat(0.0f, 0.0f, 0.0f);
 	float distanceToFocus = 10.0f;
 	float aperture = 0.1f;
-	Camera camera(lookfrom, lookat, Vec3f(0.0f, 1.0f, 0.0f), 20.0f, static_cast<float>(outputImageWidth) / static_cast<float>(outputImageHeight), aperture, distanceToFocus);
+	g_camera.Setup(lookfrom, lookat, Vec3f(0.0f, 1.0f, 0.0f), 20.0f, static_cast<float>(outputImageWidth) / static_cast<float>(outputImageHeight), aperture, distanceToFocus);
 
 	srand(time(0));
 
@@ -117,7 +146,7 @@ int main()
 				float u = static_cast<float>(j + randomU) / static_cast<float>(outputImageWidth + randomU);
 				float v = static_cast<float>(i + randomV) / static_cast<float>(outputImageHeight + randomV);
 
-				Ray r = camera.CastRay(u, v);
+				Ray r = g_camera.CastRay(u, v);
 				col += GetRaytracedColor(r, 0);
 			}
 
