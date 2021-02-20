@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <algorithm>
 
 const float G = -9.81f; //gravity
 const float PI = 3.141592654f;
@@ -481,6 +482,11 @@ static const float GetRandomNum()
 	return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
 }
 
+static float Clamp(float n, float lower, float upper)
+{
+	return std::max(lower, std::min(n, upper));
+}
+
 static Vec3f GetRandomUnitVecInSphere()
 {
 	Vec3f p;
@@ -508,6 +514,6 @@ static Vec3f ACESFilmToneMapper(Vec3f col)
 	float g = (col.g * (A * col.g + B)) / (col.g * (C * col.g + D) + E);
 	float b = (col.b * (A * col.b + B)) / (col.b * (C * col.b + D) + E);
 
-	return Vec3f(r, g, b);
+	return Vec3f(Clamp(r, 0.0f, 1.0f), Clamp(g, 0.0f, 1.0f), Clamp(b, 0.0f, 1.0f));
 }
 

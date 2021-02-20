@@ -51,14 +51,7 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 						// Diffuse light
 						{
 							float diffuseLightIntensity = hitRecord.m_normal.dot(lightDir);
-							if (diffuseLightIntensity < 0.0f)
-							{
-								diffuseLightIntensity = 0.0f;
-							}
-							else if (diffuseLightIntensity > 1.0f)
-							{
-								diffuseLightIntensity = 1.0f;
-							}
+							diffuseLightIntensity = Clamp(diffuseLightIntensity, 0.0f, 1.0f);
 							lightColour += attenuatedLightColour * diffuseLightIntensity;
 						}
 
@@ -88,13 +81,13 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 void MakeScene()
 {
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -1000.0f, 0.0f), 1000.0f, new LambertianDiffuse(Vec3f(0.5f, 0.5f, 0.5f))));
-	for (int a = -11; a < 11; a++)
+	for (int a = -11; a < 8; a++)
 	{
-		for (int b = -11; b < 11; b++)
+		for (int b = -8; b < 8; b++)
 		{
 			float chooseMaterial = GetRandomNum();
 			Vec3f center(a + 0.9f * GetRandomNum(), 0.2f, b + 0.9f * GetRandomNum());
-			if (chooseMaterial <= 0.5f)
+			if (chooseMaterial <= 0.75f)
 			{
 				g_hitObjectsList.push_back(new Sphere(center, 0.2f, new LambertianDiffuse(Vec3f(GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum()))));
 			}
@@ -153,7 +146,6 @@ int main()
 			col.r /= static_cast<float>(antialisingSamples);
 			col.g /= static_cast<float>(antialisingSamples);
 			col.b /= static_cast<float>(antialisingSamples);
-			//col = Vec3f(sqrtf(col.r), sqrtf(col.g), sqrtf(col.b));
 
 			col = ACESFilmToneMapper(col);
 			int ir = static_cast<int>(255.99 * col.r);
