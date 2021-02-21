@@ -51,8 +51,8 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 						// Diffuse light
 						{
 							float diffuseLightIntensity = hitRecord.m_normal.dot(lightDir);
-							diffuseLightIntensity = Clamp(diffuseLightIntensity, 0.0f, 1.0f);
-							lightColour += attenuatedLightColour * diffuseLightIntensity;
+							diffuseLightIntensity = std::max(0.0f, diffuseLightIntensity);
+							lightColour += attenuatedLightColour * diffuseLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
 						}
 
 						// Specular light
@@ -60,7 +60,8 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 							Vec3f v = (g_camera.GetPosition() - hitRecord.m_intersectPoint).normalize();
 							Vec3f h = (lightDir + v).normalize();
 							float specularLightIntensity = powf(hitRecord.m_normal.dot(h), hitRecord.m_pMaterial->m_shininess);
-							lightColour += attenuatedLightColour * specularLightIntensity;
+							specularLightIntensity = std::max(0.0f, specularLightIntensity);
+							lightColour += attenuatedLightColour * specularLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
 						}
 					}
 				}
@@ -81,6 +82,17 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 void MakeScene()
 {
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -1000.0f, 0.0f), 1000.0f, new LambertianDiffuse(Vec3f(0.5f, 0.5f, 0.5f))));
+	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
+	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
+
+	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 10.0f, 0.25f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
+	g_hitObjectsList.push_back(pLightObject0);
+	g_lightObjectsList.push_back(pLightObject0);
+
+	/*LightSphere* pLightObject1 = new LightSphere(Vec3f(0.0f, 0.8f, 3.0f), 0.25f, 2.5f, 0.5f, new Emmisive(Vec3f(0.082f, 0.876f, 0.943f)));
+	g_hitObjectsList.push_back(pLightObject1);
+	g_lightObjectsList.push_back(pLightObject1);*/
+
 	for (int a = -11; a < 8; a++)
 	{
 		for (int b = -8; b < 8; b++)
@@ -97,13 +109,6 @@ void MakeScene()
 			}
 		}
 	}
-
-	LightSphere* pLightObject = new LightSphere(Vec3f(0.0f, 1.0f, 0.0f), 0.5f, 5.0f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
-	g_hitObjectsList.push_back(pLightObject);
-	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
-	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
-
-	g_lightObjectsList.push_back(pLightObject);
 }
 
 int main()

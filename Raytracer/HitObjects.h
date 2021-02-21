@@ -31,11 +31,11 @@ public:
 class Sphere : public HitObject
 {
 public:
-	Sphere(Vec3f center, float radius, Material* material)
+	Sphere(Vec3f center, float radius, Material* pMaterial)
 	{
 		m_position = center;
 		m_radius = radius;
-		m_pMaterial = material;
+		m_pMaterial = pMaterial;
 	}
 
 	virtual bool HasHit(Ray r, float minHitDistance, float& rMaxHitDistance, HitRecord& rHitRecord)
@@ -108,9 +108,10 @@ public:
 class LightSphere : public Sphere
 {
 public:
-	LightSphere(Vec3f center, float radius, float lightRadius, Material* material)
-		:Sphere(center, radius, material)
+	LightSphere(Vec3f center, float radius, float lightRadius, float lightIntensity, Material* pMaterial)
+		:Sphere(center, radius, pMaterial)
 		,m_isLightHit(false)
+		,m_lightIntensity(lightIntensity)
 	{
 		m_lightRadius = (lightRadius > radius) ? lightRadius : radius;
 	}
@@ -168,5 +169,6 @@ public:
 
 	float m_lightRadius;
 	bool m_isLightHit;
+	float m_lightIntensity;
 };
 
