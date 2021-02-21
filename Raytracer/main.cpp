@@ -48,7 +48,7 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 					{
 						Ray shadowRay = Ray(hitRecord.m_intersectPoint, pLightObject->m_position - hitRecord.m_intersectPoint);
 						HitRecord shadowHitRecord;
-						if (HasHit(shadowRay, 0.001f, INT_MAX, shadowHitRecord))
+						if (HasHit(shadowRay, 0.001f, distanceToLight, shadowHitRecord))
 						{
 							float shadowDistanceToLight = (shadowHitRecord.m_intersectPoint - pLightObject->m_position).magnitude();
 							if (shadowDistanceToLight <= static_cast<LightSphere*>(pLightObject)->m_radius)
@@ -102,10 +102,6 @@ void MakeScene()
 	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 10.0f, 0.25f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
 	g_hitObjectsList.push_back(pLightObject0);
 	g_lightObjectsList.push_back(pLightObject0);
-
-	/*LightSphere* pLightObject1 = new LightSphere(Vec3f(0.0f, 0.8f, 3.0f), 0.25f, 2.5f, 0.5f, new Emmisive(Vec3f(0.082f, 0.876f, 0.943f)));
-	g_hitObjectsList.push_back(pLightObject1);
-	g_lightObjectsList.push_back(pLightObject1);*/
 
 	for (int a = -11; a < 8; a++)
 	{
