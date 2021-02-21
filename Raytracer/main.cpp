@@ -40,32 +40,46 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 			}
 			else
 			{
+				float shadowMultiply = 1.0f;
 				for (HitObject* pLightObject : g_lightObjectsList)
 				{
 					float distanceToLight = (hitRecord.m_intersectPoint - pLightObject->m_position).magnitude();
 					if (distanceToLight <= static_cast<LightSphere*>(pLightObject)->m_lightRadius)
 					{
-						Vec3f lightDir = (pLightObject->m_position - hitRecord.m_intersectPoint).normalize();
-						Vec3f attenuatedLightColour = LERP(pLightObject->m_pMaterial->m_diffuseColour, Vec3f(0.0f, 0.0f, 0.0f), distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
-
-						// Diffuse light
+						Ray shadowRay = Ray(hitRecord.m_intersectPoint, pLightObject->m_position - hitRecord.m_intersectPoint);
+						HitRecord shadowHitRecord;
+						if (HasHit(shadowRay, 0.001f, INT_MAX, shadowHitRecord))
 						{
-							float diffuseLightIntensity = hitRecord.m_normal.dot(lightDir);
-							diffuseLightIntensity = std::max(0.0f, diffuseLightIntensity);
-							lightColour += attenuatedLightColour * diffuseLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
-						}
+							float shadowDistanceToLight = (shadowHitRecord.m_intersectPoint - pLightObject->m_position).magnitude();
+							if (shadowDistanceToLight <= static_cast<LightSphere*>(pLightObject)->m_radius)
+							{
+								Vec3f lightDir = (pLightObject->m_position - hitRecord.m_intersectPoint).normalize();
+								Vec3f attenuatedLightColour = LERP(pLightObject->m_pMaterial->m_diffuseColour, Vec3f(0.0f, 0.0f, 0.0f), distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
 
-						// Specular light
-						{
-							Vec3f v = (g_camera.GetPosition() - hitRecord.m_intersectPoint).normalize();
-							Vec3f h = (lightDir + v).normalize();
-							float specularLightIntensity = powf(hitRecord.m_normal.dot(h), hitRecord.m_pMaterial->m_shininess);
-							specularLightIntensity = std::max(0.0f, specularLightIntensity);
-							lightColour += attenuatedLightColour * specularLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
+								// Diffuse light
+								{
+									float diffuseLightIntensity = hitRecord.m_normal.dot(lightDir);
+									diffuseLightIntensity = std::max(0.0f, diffuseLightIntensity);
+									lightColour += attenuatedLightColour * diffuseLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
+								}
+
+								// Specular light
+								{
+									Vec3f v = (g_camera.GetPosition() - hitRecord.m_intersectPoint).normalize();
+									Vec3f h = (lightDir + v).normalize();
+									float specularLightIntensity = powf(hitRecord.m_normal.dot(h), hitRecord.m_pMaterial->m_shininess);
+									specularLightIntensity = std::max(0.0f, specularLightIntensity);
+									lightColour += attenuatedLightColour * specularLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
+								}
+							}
+							else
+							{
+								shadowMultiply = 0.65f;
+							}
 						}
 					}
 				}
-				return lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1);
+				return lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1) * shadowMultiply;
 			}
 		}
 		else
