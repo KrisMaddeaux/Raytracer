@@ -24,6 +24,31 @@ bool HasHit(Ray r, float minHitDistance, float maxHitDistance, HitRecord& rHitRe
 	return hasHit;
 }
 
+Vec3f CalcLighting(HitObject* pLightObject, HitRecord hitRecord, float distanceToLight)
+{
+	Vec3f lightColour = Vec3f(0.0f, 0.0f, 0.0f);
+	Vec3f lightDir = (pLightObject->m_position - hitRecord.m_intersectPoint).normalize();
+	Vec3f attenuatedLightColour = LERP(pLightObject->m_pMaterial->m_diffuseColour, Vec3f(0.0f, 0.0f, 0.0f), distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
+
+	// Diffuse light
+	{
+		float diffuseLightIntensity = hitRecord.m_normal.dot(lightDir);
+		diffuseLightIntensity = std::max(0.0f, diffuseLightIntensity);
+		lightColour += attenuatedLightColour * diffuseLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
+	}
+
+	// Specular light
+	{
+		Vec3f v = (g_camera.GetPosition() - hitRecord.m_intersectPoint).normalize();
+		Vec3f h = (lightDir + v).normalize();
+		float specularLightIntensity = powf(hitRecord.m_normal.dot(h), hitRecord.m_pMaterial->m_shininess);
+		specularLightIntensity = std::max(0.0f, specularLightIntensity);
+		lightColour += attenuatedLightColour * specularLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
+	}
+
+	return lightColour;
+}
+
 Vec3f GetRaytracedColor(Ray r, int depth)
 {
 	HitRecord hitRecord;
@@ -53,28 +78,39 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 							float shadowDistanceToLight = (shadowHitRecord.m_intersectPoint - pLightObject->m_position).magnitude();
 							if (shadowDistanceToLight <= static_cast<LightSphere*>(pLightObject)->m_radius)
 							{
-								Vec3f lightDir = (pLightObject->m_position - hitRecord.m_intersectPoint).normalize();
-								Vec3f attenuatedLightColour = LERP(pLightObject->m_pMaterial->m_diffuseColour, Vec3f(0.0f, 0.0f, 0.0f), distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
-
-								// Diffuse light
-								{
-									float diffuseLightIntensity = hitRecord.m_normal.dot(lightDir);
-									diffuseLightIntensity = std::max(0.0f, diffuseLightIntensity);
-									lightColour += attenuatedLightColour * diffuseLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
-								}
-
-								// Specular light
-								{
-									Vec3f v = (g_camera.GetPosition() - hitRecord.m_intersectPoint).normalize();
-									Vec3f h = (lightDir + v).normalize();
-									float specularLightIntensity = powf(hitRecord.m_normal.dot(h), hitRecord.m_pMaterial->m_shininess);
-									specularLightIntensity = std::max(0.0f, specularLightIntensity);
-									lightColour += attenuatedLightColour * specularLightIntensity * static_cast<LightSphere*>(pLightObject)->m_lightIntensity;
-								}
+								lightColour += CalcLighting(pLightObject, hitRecord, distanceToLight);
 							}
 							else
 							{
-								shadowMultiply = 0.65f;
+								float softShadowMultiply = 0.0f;
+								const int numOfSoftShadowSamples = 100;
+								for (int s = 0; s < numOfSoftShadowSamples; s++)
+								{
+									Vec3f randomLightPos = GetRandomUnitVecInSphere() * static_cast<LightSphere*>(pLightObject)->m_radius + pLightObject->m_position;
+									Ray softShadowRay = Ray(hitRecord.m_intersectPoint, randomLightPos - hitRecord.m_intersectPoint);
+									float softShadowRayMaxHitDistance = (randomLightPos - hitRecord.m_intersectPoint).magnitude();
+									HitRecord softShadowHitRecord;
+									if (HasHit(softShadowRay, 0.001f, softShadowRayMaxHitDistance, softShadowHitRecord))
+									{
+										float shadowDistanceToLight = (softShadowHitRecord.m_intersectPoint - randomLightPos).magnitude();
+										if (shadowDistanceToLight <= static_cast<LightSphere*>(pLightObject)->m_radius)
+										{
+											lightColour += CalcLighting(pLightObject, hitRecord, distanceToLight);
+											softShadowMultiply += 1.0f;
+										}
+										else
+										{
+											softShadowMultiply += 0.4f;
+										}
+									}
+								}
+
+								lightColour.r = lightColour.r / numOfSoftShadowSamples;
+								lightColour.g = lightColour.g / numOfSoftShadowSamples;
+								lightColour.b = lightColour.b / numOfSoftShadowSamples;
+
+								softShadowMultiply /= numOfSoftShadowSamples;
+								shadowMultiply *= softShadowMultiply;
 							}
 						}
 					}
@@ -99,7 +135,7 @@ void MakeScene()
 	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 
-	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 10.0f, 0.25f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
+	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.2f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
 	g_hitObjectsList.push_back(pLightObject0);
 	g_lightObjectsList.push_back(pLightObject0);
 
