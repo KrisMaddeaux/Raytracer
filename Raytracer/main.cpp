@@ -2,9 +2,14 @@
 #include <fstream>
 #include <vector>
 #include <time.h>
+#include <thread> 
 
 #include "Materials.h"
 #include "Camera.h"
+
+#define PROCESSOR_NUM 8
+
+std::vector<Vec3f> g_outputPixels[PROCESSOR_NUM];
 
 std::vector<HitObject*> g_hitObjectsList;
 std::vector<HitObject*> g_lightObjectsList;
@@ -133,6 +138,107 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 	return LERP(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(0.5f, 0.7f, 1.0f), t);
 }
 
+void CreateImageSection(int bottomLeftPixelX, int bottomLeftPixelY, int sectionWidth, int sectionHeight, int finalWidth, int finalHeight, int sectionNumber)
+{
+	const int antialisingSamples = 100;
+
+	for (int i = sectionHeight + bottomLeftPixelY; bottomLeftPixelY <= i; i--)
+	{
+		for (int j = bottomLeftPixelX; j < sectionWidth + bottomLeftPixelX; j++)
+		{
+			Vec3f col(0.0f, 0.0f, 0.0f);
+			for (int k = 0; k < antialisingSamples; k++)
+			{
+				const float randomU = GetRandomNum();
+				const float randomV = GetRandomNum();
+				float u = static_cast<float>(j + randomU) / static_cast<float>(finalWidth + randomU);
+				float v = static_cast<float>(i + randomV) / static_cast<float>(finalHeight + randomV);
+
+				Ray r = g_camera.CastRay(u, v);
+				col += GetRaytracedColor(r, 0);
+			}
+
+			col.r /= static_cast<float>(antialisingSamples);
+			col.g /= static_cast<float>(antialisingSamples);
+			col.b /= static_cast<float>(antialisingSamples);
+
+			col = ACESFilmToneMapper(col);
+			int ir = static_cast<int>(255.99 * col.r);
+			int ig = static_cast<int>(255.99 * col.g);
+			int ib = static_cast<int>(255.99 * col.b);
+			g_outputPixels[sectionNumber].push_back(Vec3f(ir, ig, ib));
+		}
+	}
+}
+
+void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int finalHeight)
+{
+	std::ofstream myfile;
+	myfile.open("RaytracedOutput.ppm");
+	myfile.clear();
+
+	myfile << "P3\n" << finalWidth << " " << finalHeight << "\n255\n";
+
+	int sectionNumber = 0;
+	int sectionPixelNumber = 0;
+	int pixelX = 0;
+	int pixelY = sectionHeight;
+	int sectionRow = 0;
+	while (true)
+	{
+		if (pixelX == sectionWidth || (pixelX % sectionWidth == 0 && pixelX >= sectionWidth))
+		{
+			sectionNumber++;
+			sectionPixelNumber = sectionWidth * (sectionHeight - pixelY);
+		}
+
+		if (pixelX >= finalWidth)
+		{
+			pixelX = 0;
+			pixelY--;
+
+			if (pixelY < 0)
+			{
+				pixelY = sectionHeight;
+				sectionRow++;
+			}
+
+			sectionPixelNumber = sectionWidth * (sectionHeight - pixelY);
+
+			if (sectionRow == 1)
+			{
+				sectionNumber = 4;
+			}
+			else if (sectionRow > 1)
+			{
+				// Done!
+				break;
+			}
+			else
+			{
+				sectionNumber = 0;
+			}
+		}
+
+		if (sectionNumber < 8)
+		{
+			int r = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].r);
+			int g = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].g);
+			int b = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].b);
+			myfile << r << " " << g << " " << b << "\n";
+		}
+		else
+		{
+			// Done!
+			break;
+		}
+
+		pixelX++;
+		sectionPixelNumber++;
+	}
+	myfile.close();
+}
+
 void MakeScene()
 {
 	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -1000.0f, 0.0f), 1000.0f, new LambertianDiffuse(Vec3f(0.5f, 0.5f, 0.5f))));
@@ -163,14 +269,8 @@ void MakeScene()
 
 int main()
 {
-	std::ofstream myfile;
-	myfile.open("RaytracedOutput.ppm");
-	myfile.clear();
-
 	const int outputImageWidth = 200;
 	const int outputImageHeight = 100;
-	const int antialisingSamples = 100;
-	myfile << "P3\n" << outputImageWidth << " " << outputImageHeight << "\n255\n";
 
 	MakeScene();
 
@@ -182,39 +282,39 @@ int main()
 
 	srand(time(0));
 
-	for (int i = outputImageHeight; 0 <= i; i--)
+	int imageSectionWidth = outputImageWidth / 4;
+	int imageSectionHeight = outputImageHeight / 2;
+
+	std::vector<std::thread*> threads;
+
+	for (int y = 0; y < 2; y++)
 	{
-		for (int j = 0; j < outputImageWidth; j++)
+		for (int x = 0; x < 4; x++)
 		{
-			Vec3f col(0.0f, 0.0f, 0.0f);
-			for (int k = 0; k < antialisingSamples; k++)
-			{
-				const float randomU = GetRandomNum();
-				const float randomV = GetRandomNum();
-				float u = static_cast<float>(j + randomU) / static_cast<float>(outputImageWidth + randomU);
-				float v = static_cast<float>(i + randomV) / static_cast<float>(outputImageHeight + randomV);
-
-				Ray r = g_camera.CastRay(u, v);
-				col += GetRaytracedColor(r, 0);
-			}
-
-			col.r /= static_cast<float>(antialisingSamples);
-			col.g /= static_cast<float>(antialisingSamples);
-			col.b /= static_cast<float>(antialisingSamples);
-
-			col = ACESFilmToneMapper(col);
-			int ir = static_cast<int>(255.99 * col.r);
-			int ig = static_cast<int>(255.99 * col.g);
-			int ib = static_cast<int>(255.99 * col.b);
-			myfile << ir << " " << ig << " " << ib << "\n";
+			int bottomLeftPixelX = imageSectionWidth * x;
+			int bottomLeftPixelY = imageSectionHeight - (imageSectionHeight * y);
+			std::thread* pThread = new std::thread(CreateImageSection, bottomLeftPixelX, bottomLeftPixelY, imageSectionWidth, imageSectionHeight, outputImageWidth, outputImageHeight, x + (4 * y));
+			threads.push_back(pThread);
 		}
 	}
 
-	myfile.close();
+	for (std::thread* pThread : threads)
+	{
+		pThread->join();
+	}
+
+	for (std::thread* pThread : threads)
+	{
+		delete pThread;
+	}
+
 	for (HitObject* pHitObject : g_hitObjectsList)
 	{
 		delete pHitObject;
 	}
+
+	CreateFinalImage(imageSectionWidth, imageSectionHeight, outputImageWidth, outputImageHeight);
+
 	return 0;
 }
 
