@@ -84,6 +84,7 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 							{
 								float softShadowMultiply = 0.0f;
 								const int numOfSoftShadowSamples = 100;
+								int numOfSamplesToAverage = 0;
 								for (int s = 0; s < numOfSoftShadowSamples; s++)
 								{
 									Vec3f randomLightPos = GetRandomUnitVecInSphere() * static_cast<LightSphere*>(pLightObject)->m_radius + pLightObject->m_position;
@@ -97,25 +98,28 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 										{
 											lightColour += CalcLighting(pLightObject, hitRecord, distanceToLight);
 											softShadowMultiply += 1.0f;
+											numOfSamplesToAverage++;
 										}
 										else
 										{
 											softShadowMultiply += 0.4f;
+											numOfSamplesToAverage++;
 										}
 									}
 								}
 
-								lightColour.r = lightColour.r / numOfSoftShadowSamples;
-								lightColour.g = lightColour.g / numOfSoftShadowSamples;
-								lightColour.b = lightColour.b / numOfSoftShadowSamples;
+								lightColour.r /= numOfSamplesToAverage;
+								lightColour.g /= numOfSamplesToAverage;
+								lightColour.b /= numOfSamplesToAverage;
 
-								softShadowMultiply /= numOfSoftShadowSamples;
+								softShadowMultiply /= numOfSamplesToAverage;
+
 								shadowMultiply *= softShadowMultiply;
 							}
 						}
 					}
 				}
-				return lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1) * shadowMultiply;
+				return (lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1)) * shadowMultiply;
 			}
 		}
 		else
