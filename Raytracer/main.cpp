@@ -7,6 +7,7 @@
 #include "Materials.h"
 #include "Camera.h"
 
+#define USETHREADS
 #define PROCESSOR_NUM 8
 
 std::vector<Vec3f> g_outputPixels[PROCESSOR_NUM];
@@ -171,7 +172,7 @@ void CreateImageSection(int bottomLeftPixelX, int bottomLeftPixelY, int sectionW
 	}
 }
 
-void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int finalHeight)
+void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int finalHeight, int sectionRows, int sectionColumns)
 {
 	std::ofstream myfile;
 	myfile.open("RaytracedOutput.ppm");
@@ -183,15 +184,9 @@ void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int f
 	int sectionPixelNumber = 0;
 	int pixelX = 0;
 	int pixelY = sectionHeight;
-	int sectionRow = 0;
+	int currentSectionRow = 0;
 	while (true)
 	{
-		if (pixelX == sectionWidth || (pixelX % sectionWidth == 0 && pixelX >= sectionWidth))
-		{
-			sectionNumber++;
-			sectionPixelNumber = sectionWidth * (sectionHeight - pixelY);
-		}
-
 		if (pixelX >= finalWidth)
 		{
 			pixelX = 0;
@@ -200,38 +195,28 @@ void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int f
 			if (pixelY < 0)
 			{
 				pixelY = sectionHeight;
-				sectionRow++;
+				currentSectionRow++;
 			}
 
-			sectionPixelNumber = sectionWidth * (sectionHeight - pixelY);
-
-			if (sectionRow == 1)
-			{
-				sectionNumber = 4;
-			}
-			else if (sectionRow > 1)
+			if (currentSectionRow == sectionRows)
 			{
 				// Done!
 				break;
 			}
-			else
-			{
-				sectionNumber = 0;
-			}
+
+			sectionPixelNumber = sectionWidth * (sectionHeight - pixelY);
+			sectionNumber = currentSectionRow * sectionColumns;
+		}
+		else if (pixelX == sectionWidth || (pixelX % sectionWidth == 0 && pixelX >= sectionWidth))
+		{
+			sectionNumber++;
+			sectionPixelNumber = sectionWidth * (sectionHeight - pixelY);
 		}
 
-		if (sectionNumber < 8)
-		{
-			int r = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].r);
-			int g = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].g);
-			int b = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].b);
-			myfile << r << " " << g << " " << b << "\n";
-		}
-		else
-		{
-			// Done!
-			break;
-		}
+		int r = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].r);
+		int g = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].g);
+		int b = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].b);
+		myfile << r << " " << g << " " << b << "\n";
 
 		pixelX++;
 		sectionPixelNumber++;
@@ -282,18 +267,22 @@ int main()
 
 	srand(time(0));
 
-	int imageSectionWidth = outputImageWidth / 4;
-	int imageSectionHeight = outputImageHeight / 2;
+#ifdef USETHREADS
+	const int imageSectionRows = static_cast<int>(sqrtf(PROCESSOR_NUM));
+	const int imageSectionColumns = PROCESSOR_NUM / imageSectionRows;
+
+	const int imageSectionWidth = outputImageWidth / imageSectionColumns;
+	const int imageSectionHeight = outputImageHeight / imageSectionRows;
 
 	std::vector<std::thread*> threads;
 
-	for (int y = 0; y < 2; y++)
+	for (int y = 0; y < imageSectionRows; y++)
 	{
-		for (int x = 0; x < 4; x++)
+		for (int x = 0; x < imageSectionColumns; x++)
 		{
 			int bottomLeftPixelX = imageSectionWidth * x;
 			int bottomLeftPixelY = imageSectionHeight - (imageSectionHeight * y);
-			std::thread* pThread = new std::thread(CreateImageSection, bottomLeftPixelX, bottomLeftPixelY, imageSectionWidth, imageSectionHeight, outputImageWidth, outputImageHeight, x + (4 * y));
+			std::thread* pThread = new std::thread(CreateImageSection, bottomLeftPixelX, bottomLeftPixelY, imageSectionWidth, imageSectionHeight, outputImageWidth, outputImageHeight, x + (imageSectionColumns * y));
 			threads.push_back(pThread);
 		}
 	}
@@ -308,12 +297,16 @@ int main()
 		delete pThread;
 	}
 
+	CreateFinalImage(imageSectionWidth, imageSectionHeight, outputImageWidth, outputImageHeight, imageSectionRows, imageSectionColumns);
+#else
+	CreateImageSection(0, 0, outputImageWidth, outputImageHeight, outputImageWidth, outputImageHeight, 0);
+	CreateFinalImage(outputImageWidth, outputImageHeight, outputImageWidth, outputImageHeight, 1, 1);
+#endif // USETHREADS
+
 	for (HitObject* pHitObject : g_hitObjectsList)
 	{
 		delete pHitObject;
 	}
-
-	CreateFinalImage(imageSectionWidth, imageSectionHeight, outputImageWidth, outputImageHeight);
 
 	return 0;
 }
