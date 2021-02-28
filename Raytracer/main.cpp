@@ -121,11 +121,12 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 								softShadowMultiply /= numOfSamplesToAverage;
 
 								shadowMultiply *= softShadowMultiply;
+								shadowMultiply = LERP(shadowMultiply, 1.0f, distanceToLight / static_cast<LightSphere*>(pLightObject)->m_lightRadius);
 							}
 						}
 					}
 				}
-				return (lightColour + hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1)) * shadowMultiply;
+				return (Vec3f(0.8f, 0.8f, 0.8f) + lightColour) * hitRecord.m_pMaterial->m_diffuseColour * GetRaytracedColor(scattered, depth + 1) * shadowMultiply;
 			}
 		}
 		else
@@ -224,32 +225,60 @@ void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int f
 	myfile.close();
 }
 
+bool CanSpawnSphere(Vec3f position, float radius)
+{
+	bool canSpawn = true;
+	for (HitObject* pHitObject : g_hitObjectsList)
+	{
+		float distance = (pHitObject->m_position - position).magnitude();
+		if (distance <= static_cast<Sphere*>(pHitObject)->m_radius + radius)
+		{
+			canSpawn = false;
+			break;
+		}
+	}
+	return canSpawn;
+}
+
 void MakeScene()
 {
-	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -1000.0f, 0.0f), 1000.0f, new LambertianDiffuse(Vec3f(0.5f, 0.5f, 0.5f))));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 
-	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.2f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
+	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.9f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
 	g_hitObjectsList.push_back(pLightObject0);
 	g_lightObjectsList.push_back(pLightObject0);
 
-	for (int a = -11; a < 8; a++)
+	const int numOfRandomSpheres = 100;
+	for (int i = 0; i < numOfRandomSpheres; i++)
 	{
-		for (int b = -8; b < 8; b++)
+		bool isSpawned = false;
+		while (!isSpawned)
 		{
-			float chooseMaterial = GetRandomNum();
-			Vec3f center(a + 0.9f * GetRandomNum(), 0.2f, b + 0.9f * GetRandomNum());
-			if (chooseMaterial <= 0.75f)
+			float radius = GetRandomNum() * 0.2f + 0.2f;
+			Vec3f center((rand() % 20 - 11) + 0.9f * GetRandomNum(), radius, (rand() % 17 - 8) + 0.9f * GetRandomNum());
+			if (CanSpawnSphere(center, radius))
 			{
-				g_hitObjectsList.push_back(new Sphere(center, 0.2f, new LambertianDiffuse(Vec3f(GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum()))));
-			}
-			else
-			{
-				g_hitObjectsList.push_back(new Sphere(center, 0.2f, new Metal(Vec3f(0.5f * (1.0f + GetRandomNum()), 0.5f * (1.0f + GetRandomNum()), 0.5f * (1.0f + GetRandomNum())), 0.5f * GetRandomNum())));
+				isSpawned = true;
+				float chooseMaterial = GetRandomNum();
+				if (chooseMaterial <= 0.75f)
+				{
+					Vec3f colour;
+					while (colour.magnitude() < 0.1f) // Make sure the random colour isn't too dark
+					{
+						colour = Vec3f(GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum(), GetRandomNum() * GetRandomNum());
+					}
+					g_hitObjectsList.push_back(new Sphere(center, radius, new LambertianDiffuse(colour)));
+				}
+				else
+				{
+					g_hitObjectsList.push_back(new Sphere(center, radius, new Metal(Vec3f(0.5f * (1.0f + GetRandomNum()), 0.5f * (1.0f + GetRandomNum()), 0.5f * (1.0f + GetRandomNum())), 0.5f * GetRandomNum())));
+				}
 			}
 		}
 	}
+
+	g_hitObjectsList.push_back(new Sphere(Vec3f(0.0f, -1000.0f, 0.0f), 1000.0f, new LambertianDiffuse(Vec3f(0.5f, 0.5f, 0.5f))));
 }
 
 int main()
