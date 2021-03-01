@@ -135,9 +135,7 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 		}
 	}
 
-	Vec3f dir = r.GetDirection().normalize();
-	float t = 0.5 * (dir.y + 1.0);
-	return LERP(Vec3f(1.0f, 1.0f, 1.0f), Vec3f(0.5f, 0.7f, 1.0f), t);
+	return Vec3f(1.0f, 1.0f, 1.0f);
 }
 
 void CreateImageSection(int bottomLeftPixelX, int bottomLeftPixelY, int sectionWidth, int sectionHeight, int finalWidth, int finalHeight, int sectionNumber)
