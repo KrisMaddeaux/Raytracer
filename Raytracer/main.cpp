@@ -10,7 +10,9 @@
 #define USETHREADS
 #define PROCESSOR_NUM 8
 
-std::vector<Vec3f> g_outputPixels[PROCESSOR_NUM];
+std::vector<Vec3f> g_sectionsPixels[PROCESSOR_NUM];
+std::vector<Vec3f> g_bloomPixels;
+std::vector<Vec3f> g_finalPixels;
 
 std::vector<HitObject*> g_hitObjectsList;
 std::vector<HitObject*> g_lightObjectsList;
@@ -162,23 +164,13 @@ void CreateImageSection(int bottomLeftPixelX, int bottomLeftPixelY, int sectionW
 			col.g /= static_cast<float>(antialisingSamples);
 			col.b /= static_cast<float>(antialisingSamples);
 
-			col = ACESFilmToneMapper(col);
-			int ir = static_cast<int>(255.99 * col.r);
-			int ig = static_cast<int>(255.99 * col.g);
-			int ib = static_cast<int>(255.99 * col.b);
-			g_outputPixels[sectionNumber].push_back(Vec3f(ir, ig, ib));
+			g_sectionsPixels[sectionNumber].push_back(col);
 		}
 	}
 }
 
 void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int finalHeight, int sectionRows, int sectionColumns)
 {
-	std::ofstream myfile;
-	myfile.open("RaytracedOutput.ppm");
-	myfile.clear();
-
-	myfile << "P3\n" << finalWidth << " " << finalHeight << "\n255\n";
-
 	int sectionNumber = 0;
 	int sectionPixelNumber = 0;
 	int pixelX = 0;
@@ -212,13 +204,90 @@ void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int f
 			sectionPixelNumber = sectionWidth * (sectionHeight - pixelY);
 		}
 
-		int r = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].r);
-		int g = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].g);
-		int b = static_cast<int>(g_outputPixels[sectionNumber][sectionPixelNumber].b);
-		myfile << r << " " << g << " " << b << "\n";
+		g_finalPixels.push_back(g_sectionsPixels[sectionNumber][sectionPixelNumber]);
+
+		if (g_sectionsPixels[sectionNumber][sectionPixelNumber].magnitude() > 2.0f)
+		{
+			g_bloomPixels.push_back(g_sectionsPixels[sectionNumber][sectionPixelNumber]);
+		}
+		else
+		{
+			g_bloomPixels.push_back(Vec3f(0.0f, 0.0f, 0.0f));
+		}
 
 		pixelX++;
 		sectionPixelNumber++;
+	}
+}
+
+void Bloom(int width)
+{
+	const int numOfWeights = 5;
+	const float weight[numOfWeights] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
+
+	// horizontal blur
+	for (int i = 0; i < g_bloomPixels.size(); i++)
+	{
+		Vec3f result = g_bloomPixels[i] * weight[0]; // current pixel contribution
+		for (int j = 1; j < numOfWeights; j++)
+		{
+			int index = i - j;
+			if (index > 0)
+			{
+				result += g_bloomPixels[index] * weight[j];
+			}
+
+			index = i + j;
+			if (index < g_bloomPixels.size())
+			{
+				result += g_bloomPixels[index] * weight[j];
+			}
+		}
+
+		g_bloomPixels[i] = result;
+	}
+
+	//vertical blur
+	for (int i = 0; i < g_bloomPixels.size(); i++)
+	{
+		Vec3f result = g_bloomPixels[i] * weight[0]; // current pixel contribution
+		for (int j = 1; j < numOfWeights; j++)
+		{
+			int index = i - (j * width);
+			if (index > 0)
+			{
+				result += g_bloomPixels[index] * weight[j];
+			}
+
+			index = i + (j * width);
+			if (index < g_bloomPixels.size())
+			{
+				result += g_bloomPixels[index] * weight[j];
+			}
+		}
+
+		g_bloomPixels[i] = result;
+	}
+}
+
+void SaveFinalImage(int width, int height)
+{
+	std::ofstream myfile;
+	myfile.open("RaytracedOutput.ppm");
+	myfile.clear();
+
+	myfile << "P3\n" << width << " " << height << "\n255\n";
+
+	for(int i = 0; i < g_finalPixels.size(); i++)
+	{
+		Vec3f hdrColour = g_finalPixels[i];
+		hdrColour += g_bloomPixels[i];
+		Vec3f col = ACESFilmToneMapper(hdrColour);
+		int r = static_cast<int>(255.99 * col.r);
+		int g = static_cast<int>(255.99 * col.g);
+		int b = static_cast<int>(255.99 * col.b);
+
+		myfile << r << " " << g << " " << b << "\n";
 	}
 	myfile.close();
 }
@@ -329,6 +398,10 @@ int main()
 	CreateImageSection(0, 0, outputImageWidth, outputImageHeight, outputImageWidth, outputImageHeight, 0);
 	CreateFinalImage(outputImageWidth, outputImageHeight, outputImageWidth, outputImageHeight, 1, 1);
 #endif // USETHREADS
+
+	Bloom(outputImageWidth);
+
+	SaveFinalImage(outputImageWidth, outputImageHeight);
 
 	for (HitObject* pHitObject : g_hitObjectsList)
 	{
