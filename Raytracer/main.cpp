@@ -108,7 +108,7 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 										}
 										else
 										{
-											softShadowMultiply += 0.4f;
+											softShadowMultiply += 0.2f;
 											numOfSamplesToAverage++;
 										}
 									}
@@ -243,7 +243,7 @@ void MakeScene()
 	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 
-	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.9f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
+	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.8f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
 	g_hitObjectsList.push_back(pLightObject0);
 	g_lightObjectsList.push_back(pLightObject0);
 
