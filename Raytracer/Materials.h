@@ -61,11 +61,12 @@ private:
 class Emmisive : public Material
 {
 public:
-	Emmisive(Vec3f diffuse)
+	Emmisive(Vec3f diffuse, float exposure)
 	{
 		m_diffuseColour = diffuse;
 		m_materialType = enEmmisive;
 		m_shininess = 0.0f;
+		m_exposure = exposure;
 	}
 
 	virtual bool Scatter(Ray inRay, HitRecord hitRecord, Ray& rScatteredRay)
@@ -100,5 +101,7 @@ public:
 		}
 		return true;
 	}
+
+	float m_exposure;
 };
 

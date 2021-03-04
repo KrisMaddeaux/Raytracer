@@ -68,8 +68,8 @@ Vec3f GetRaytracedColor(Ray r, int depth)
 			Vec3f lightColour = Vec3f(0.0f, 0.0f, 0.0f);
 			if (hitRecord.m_pMaterial->m_materialType == MaterialType::enEmmisive)
 			{
-				lightColour = hitRecord.m_pMaterial->m_diffuseColour;
-				return lightColour + hitRecord.m_pMaterial->m_diffuseColour;
+				Emmisive* pEmmisive = static_cast<Emmisive*>(hitRecord.m_pMaterial);
+				return pEmmisive->m_diffuseColour * pEmmisive->m_exposure;
 			}
 			else
 			{
@@ -312,7 +312,7 @@ void MakeScene()
 	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 
-	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.8f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f)));
+	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.8f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f), 3.0f));
 	g_hitObjectsList.push_back(pLightObject0);
 	g_lightObjectsList.push_back(pLightObject0);
 
