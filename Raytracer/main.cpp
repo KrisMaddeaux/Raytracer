@@ -1,3 +1,4 @@
+#include <assert.h> 
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -220,10 +221,109 @@ void CreateFinalImage(int sectionWidth, int sectionHeight, int finalWidth, int f
 	}
 }
 
-void Bloom(int width)
+std::vector<Vec3f> UpscaleImage(int oldWidth, int oldHeight, int newWidth, int newHeight, std::vector<Vec3f> pixels)
+{
+	assert(oldWidth < newWidth);
+	assert(oldHeight < newHeight);
+
+	const float scaledownWidth = static_cast<float>(oldWidth) / static_cast<float>(newWidth);
+	const float scaledownHeight = static_cast<float>(oldHeight) / static_cast<float>(newHeight);
+	const float scaleupWidth = static_cast<float>(newWidth) / static_cast<float>(oldWidth);
+	const float scaleupHeight = static_cast<float>(newHeight) / static_cast<float>(oldHeight);
+
+	std::vector<Vec3f> upscaledPixels;
+
+	for (int y = 0; y < newHeight; y++)
+	{
+		for (int x = 0; x < newWidth; x++)
+		{
+			int aPixelX = static_cast<int>(scaledownWidth * x);
+			int aPixelY = static_cast<int>(scaledownHeight * y);
+			int bPixelX = aPixelX + 1;
+			int cPixelY = aPixelY + 1;
+			
+			int index = aPixelX + (oldWidth * aPixelY);
+
+			Vec3f a = pixels[index];
+			Vec3f b = pixels[index + 1];
+			Vec3f c = pixels[index + oldWidth];
+			Vec3f d = pixels[index + oldWidth + 1];
+
+			float tx = (x - (aPixelX * scaleupWidth)) / ((bPixelX * scaleupWidth) - (aPixelX * scaleupWidth));
+			float ty = (y - (aPixelY * scaleupHeight)) / ((cPixelY * scaleupHeight) - (aPixelY * scaleupHeight));
+			Vec3f ab = LERP(a, b, tx);
+			Vec3f cd = LERP(c, d, tx);
+			Vec3f final = LERP(ab, cd, ty);
+			upscaledPixels.push_back(final);
+		}
+	}
+
+	return upscaledPixels;
+}
+
+std::vector<Vec3f> DownscaleImage(int oldWidth, int oldHeight, int newWidth, int newHeight, std::vector<Vec3f> pixels)
+{
+	assert(oldWidth > newWidth);
+	assert(oldHeight > newHeight);
+
+	const float scaledownWidth = static_cast<float>(newWidth) / static_cast<float>(oldWidth);
+	const float scaledownHeight = static_cast<float>(newHeight) / static_cast<float>(oldHeight);
+
+	std::vector<Vec3f> downscaledPixels;
+
+	for (int y = 0; y < oldHeight; y++)
+	{
+		for (int x = 0; x < oldWidth; x++)
+		{
+			Vec3f downscaledPixel;
+
+			const int pixelX = static_cast<int>(scaledownWidth * x);
+			const int pixelY = static_cast<int>(scaledownHeight * y);
+
+			int oldIndex = x + (oldWidth * y);
+			int newIndex = pixelX + (newWidth * pixelY);
+
+			if (newIndex < downscaledPixels.size())
+			{
+				downscaledPixels[newIndex] += pixels[oldIndex];
+			}
+			else
+			{
+				downscaledPixels.push_back(pixels[oldIndex]);
+			}
+		}
+	}
+
+	const int gridSampleWidth = oldWidth / newWidth;
+	const int gridSampleHeight = oldHeight / newHeight;
+	const int gridSampleSize = gridSampleWidth * gridSampleHeight;
+
+	for (Vec3f& rPixel : downscaledPixels)
+	{
+		rPixel.r /= gridSampleSize;
+		rPixel.g /= gridSampleSize;
+		rPixel.b /= gridSampleSize;
+	}
+
+	return downscaledPixels;
+}
+
+void Bloom(int width, int height)
 {
 	const int numOfWeights = 5;
 	const float weight[numOfWeights] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
+
+	const int blurPixelWidth = 512;
+	const int blurPixelHeight = 512;
+
+	if (width < blurPixelWidth)
+	{
+		g_bloomPixels = UpscaleImage(width, height, blurPixelWidth, blurPixelHeight, g_bloomPixels);
+	}
+	else
+	{
+		g_bloomPixels = DownscaleImage(width, height, blurPixelWidth, blurPixelHeight, g_bloomPixels);
+	}
 
 	// horizontal blur
 	for (int i = 0; i < g_bloomPixels.size(); i++)
@@ -253,13 +353,13 @@ void Bloom(int width)
 		Vec3f result = g_bloomPixels[i] * weight[0]; // current pixel contribution
 		for (int j = 1; j < numOfWeights; j++)
 		{
-			int index = i - (j * width);
+			int index = i - (j * blurPixelWidth);
 			if (index > 0)
 			{
 				result += g_bloomPixels[index] * weight[j];
 			}
 
-			index = i + (j * width);
+			index = i + (j * blurPixelWidth);
 			if (index < g_bloomPixels.size())
 			{
 				result += g_bloomPixels[index] * weight[j];
@@ -267,6 +367,15 @@ void Bloom(int width)
 		}
 
 		g_bloomPixels[i] = result;
+	}
+
+	if (width < blurPixelWidth)
+	{
+		g_bloomPixels = DownscaleImage(blurPixelWidth, blurPixelHeight, width, height, g_bloomPixels);
+	}
+	else
+	{
+		g_bloomPixels = UpscaleImage(blurPixelWidth, blurPixelHeight, width, height, g_bloomPixels);
 	}
 }
 
@@ -279,9 +388,11 @@ void SaveFinalImage(int width, int height)
 	myfile << "P3\n" << width << " " << height << "\n255\n";
 
 	for(int i = 0; i < g_finalPixels.size(); i++)
+	//for (int i = 0; i < g_bloomPixels.size(); i++)
 	{
 		Vec3f hdrColour = g_finalPixels[i];
 		hdrColour += g_bloomPixels[i];
+		//Vec3f hdrColour = g_bloomPixels[i];
 		Vec3f col = ACESFilmToneMapper(hdrColour);
 		int r = static_cast<int>(255.99 * col.r);
 		int g = static_cast<int>(255.99 * col.g);
@@ -399,7 +510,7 @@ int main()
 	CreateFinalImage(outputImageWidth, outputImageHeight, outputImageWidth, outputImageHeight, 1, 1);
 #endif // USETHREADS
 
-	Bloom(outputImageWidth);
+	Bloom(outputImageWidth, outputImageHeight);
 
 	SaveFinalImage(outputImageWidth, outputImageHeight);
 
