@@ -243,18 +243,21 @@ std::vector<Vec3f> UpscaleImage(int oldWidth, int oldHeight, int newWidth, int n
 			int cPixelY = aPixelY + 1;
 			
 			int index = aPixelX + (oldWidth * aPixelY);
+			int maxIndex = index + oldWidth + 1;
+			if (maxIndex < pixels.size())
+			{
+				Vec3f a = pixels[index];
+				Vec3f b = pixels[index + 1];
+				Vec3f c = pixels[index + oldWidth];
+				Vec3f d = pixels[maxIndex];
 
-			Vec3f a = pixels[index];
-			Vec3f b = pixels[index + 1];
-			Vec3f c = pixels[index + oldWidth];
-			Vec3f d = pixels[index + oldWidth + 1];
-
-			float tx = (x - (aPixelX * scaleupWidth)) / ((bPixelX * scaleupWidth) - (aPixelX * scaleupWidth));
-			float ty = (y - (aPixelY * scaleupHeight)) / ((cPixelY * scaleupHeight) - (aPixelY * scaleupHeight));
-			Vec3f ab = LERP(a, b, tx);
-			Vec3f cd = LERP(c, d, tx);
-			Vec3f final = LERP(ab, cd, ty);
-			upscaledPixels.push_back(final);
+				float tx = (x - (aPixelX * scaleupWidth)) / ((bPixelX * scaleupWidth) - (aPixelX * scaleupWidth));
+				float ty = (y - (aPixelY * scaleupHeight)) / ((cPixelY * scaleupHeight) - (aPixelY * scaleupHeight));
+				Vec3f ab = LERP(a, b, tx);
+				Vec3f cd = LERP(c, d, tx);
+				Vec3f final = LERP(ab, cd, ty);
+				upscaledPixels.push_back(final);
+			}
 		}
 	}
 
@@ -312,7 +315,6 @@ void Bloom(int width, int height)
 {
 	const int numOfWeights = 5;
 	const float weight[numOfWeights] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
-
 	const int blurPixelWidth = 512;
 	const int blurPixelHeight = 512;
 
@@ -325,6 +327,8 @@ void Bloom(int width, int height)
 		g_bloomPixels = DownscaleImage(width, height, blurPixelWidth, blurPixelHeight, g_bloomPixels);
 	}
 
+	std::vector<Vec3f> g_bloomTempPixels = g_bloomPixels;
+
 	// horizontal blur
 	for (int i = 0; i < g_bloomPixels.size(); i++)
 	{
@@ -332,7 +336,7 @@ void Bloom(int width, int height)
 		for (int j = 1; j < numOfWeights; j++)
 		{
 			int index = i - j;
-			if (index > 0)
+			if (0 < index)
 			{
 				result += g_bloomPixels[index] * weight[j];
 			}
@@ -343,9 +347,10 @@ void Bloom(int width, int height)
 				result += g_bloomPixels[index] * weight[j];
 			}
 		}
-
-		g_bloomPixels[i] = result;
+		g_bloomTempPixels[i] = result;
 	}
+
+	g_bloomPixels = g_bloomTempPixels;
 
 	//vertical blur
 	for (int i = 0; i < g_bloomPixels.size(); i++)
@@ -354,7 +359,7 @@ void Bloom(int width, int height)
 		for (int j = 1; j < numOfWeights; j++)
 		{
 			int index = i - (j * blurPixelWidth);
-			if (index > 0)
+			if (0 < index)
 			{
 				result += g_bloomPixels[index] * weight[j];
 			}
@@ -365,9 +370,10 @@ void Bloom(int width, int height)
 				result += g_bloomPixels[index] * weight[j];
 			}
 		}
-
-		g_bloomPixels[i] = result;
+		g_bloomTempPixels[i] = result;
 	}
+
+	g_bloomPixels = g_bloomTempPixels;
 
 	if (width < blurPixelWidth)
 	{
@@ -388,15 +394,14 @@ void SaveFinalImage(int width, int height)
 	myfile << "P3\n" << width << " " << height << "\n255\n";
 
 	for(int i = 0; i < g_finalPixels.size(); i++)
-	//for (int i = 0; i < g_bloomPixels.size(); i++)
 	{
 		Vec3f hdrColour = g_finalPixels[i];
 		hdrColour += g_bloomPixels[i];
 		//Vec3f hdrColour = g_bloomPixels[i];
 		Vec3f col = ACESFilmToneMapper(hdrColour);
-		int r = static_cast<int>(255.99 * col.r);
-		int g = static_cast<int>(255.99 * col.g);
-		int b = static_cast<int>(255.99 * col.b);
+		int r = static_cast<int>(255.0f * col.r);
+		int g = static_cast<int>(255.0f * col.g);
+		int b = static_cast<int>(255.0f * col.b);
 
 		myfile << r << " " << g << " " << b << "\n";
 	}
@@ -423,7 +428,7 @@ void MakeScene()
 	g_hitObjectsList.push_back(new Sphere(Vec3f(-4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 	g_hitObjectsList.push_back(new Sphere(Vec3f(4.0f, 1.0f, 0.0f), 1.0f, new Metal(Vec3f(0.7f, 0.6f, 0.5f), 0.0f)));
 
-	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.8f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f), 3.0f));
+	LightSphere* pLightObject0 = new LightSphere(Vec3f(0.0f, 1.65f, 0.0f), 0.5f, 30.0f, 0.8f, new Emmisive(Vec3f(0.969f, 0.906f, 0.039f), 2.0f));
 	g_hitObjectsList.push_back(pLightObject0);
 	g_lightObjectsList.push_back(pLightObject0);
 
@@ -461,8 +466,8 @@ void MakeScene()
 
 int main()
 {
-	const int outputImageWidth = 200;
-	const int outputImageHeight = 100;
+	const int outputImageWidth = 1920;
+	const int outputImageHeight = 1080;
 
 	MakeScene();
 
